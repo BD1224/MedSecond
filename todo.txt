@@ -1,0 +1,127 @@
+Description: This project (MedSecond) is a web platform where users can securely upload medical images and descriptions of their health concerns to receive human-reviewed opinions from verified medical professionals and students, rather than AI. It focuses on accessibility and affordability by offering a streamlined way to obtain second opinions, while ensuring trust through a verification process for contributors based on their credentials or education status. Medical reviewers can build reputation through their activity and feedback, and users benefit from multiple perspectives on their condition in a centralized, easy-to-use dashboard. The platform aims to bridge the gap between expensive traditional second-opinion services and impersonal AI tools by providing real, community-driven medical insight in a safe and structured environment.
+
+src/app/
+  (frontend routes)
+  auth/
+    sign-in/page.tsx
+    sign-up/page.tsx
+    forgot-password/page.tsx
+    role-select/page.tsx
+  patient/
+    dashboard/page.tsx
+    create-case/page.tsx
+    my-cases/page.tsx
+    case-details/page.tsx
+    responses/page.tsx
+    response-details/page.tsx
+    medical-profile-view/page.tsx
+    messages/page.tsx
+    settings/page.tsx
+  assessor/
+    dashboard/page.tsx
+    assigned-cases/page.tsx
+    case-details/page.tsx
+    submit-response/page.tsx
+    reviews/page.tsx
+    messages/page.tsx
+    verification-status/page.tsx
+    settings/page.tsx
+  admin/
+    dashboard/page.tsx
+    case-review/page.tsx
+    assessor-verification/page.tsx
+    reports/page.tsx
+    users/page.tsx
+
+  api/
+    (backend route handlers)
+    auth/
+      register/route.ts
+      login/route.ts
+      logout/route.ts
+      reset-password/route.ts
+      session/route.ts
+    users/
+      profile/route.ts
+    patients/
+      cases/route.ts
+      files/route.ts
+    assessors/
+      cases/route.ts
+      profile/route.ts
+      responses/route.ts
+      reviews/route.ts
+      verification/route.ts
+    matching/
+      assign/route.ts
+    messages/
+      threads/route.ts
+      messages/route.ts
+    admin/
+      cases/route.ts
+      verification/route.ts
+      reports/route.ts
+      users/route.ts
+    health/
+      route.ts
+
+src/components/
+  navbar.tsx
+  sidebar.tsx
+  case-card.tsx
+  response-card.tsx
+  message-thread.tsx
+  file-upload.tsx
+  status-badge.tsx
+  loading-spinner.tsx
+  modal.tsx
+
+src/lib/
+  (shared logic & utilities)
+  db.ts
+  auth.ts
+  validation.ts
+  constants.ts
+  patients.ts
+  assessors.ts
+  matching.ts
+  messages.ts
+  admin.ts
+  safeguards.ts
+  storage.ts
+  notifications.ts
+  errors.ts
+  permissions.ts
+
+src/styles/
+  globals.css
+
+db/
+  tables/
+    users.sql
+    patient_profiles.sql
+    assessor_profiles.sql
+    cases.sql
+    case_files.sql
+    case_assignments.sql
+    responses.sql
+    message_threads.sql
+    messages.sql
+    reviews.sql
+    verification_submissions.sql
+    reports.sql
+    audit_logs.sql
+
+Safeguards:
+[ ] Consent confirmation before submitting a case
+[ ] Terms/disclaimer that platform does not replace emergency care
+[ ] Emergency warning banner for urgent symptoms
+[ ] Role verification for assessors
+[ ] Manual admin review for verification submissions
+[ ] File upload restrictions
+[ ] Report user / report response feature
+[ ] Message moderation / flagging
+[ ] Audit trail for key actions
+[ ] Privacy controls for medical data
+[ ] Secure file storage
+[ ] Rate limiting / abuse prevention
