@@ -6,7 +6,7 @@ import DNABackground from '@/components/DNABackground';
 
 const USER = {
   name: 'Dr. Rebecca Chen', initials: 'RC', specialty: 'Internal Medicine',
-  email: 'reviewer@medsecond.com', rating: 4.9, helpful: 98, totalReviews: 142,
+  email: 'reviewer@medsecond.com',
   awaiting: 6, inProgress: 3,
 };
 
@@ -30,7 +30,6 @@ const ACTIVITY = [
   { text:'Received helpful vote from patient S.M.', time:'5 hours ago', color:'#10B981' },
   { text:'New case matched: "ECG reading — irregular rhythm"', time:'8 hours ago', color:'#F59E0B' },
   { text:'Submitted review for "Blood panel — thyroid levels"', time:'1 day ago', color:'#0A81FF' },
-  { text:'Rating updated to 4.9 stars', time:'1 day ago', color:'#10B981' },
   { text:'New case matched: "Pediatric rash — recurring"', time:'2 days ago', color:'#F59E0B' },
 ];
 
@@ -109,12 +108,11 @@ export default function ReviewerDashboard() {
         </section>
 
         {/* STATS */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 items-center text-center gap-3 ">
           {[
             { label:'Awaiting Review', value:USER.awaiting, sub:'New cases for you', color:'text-[#0A81FF] bg-blue-50/80' },
             { label:'In Progress', value:USER.inProgress, sub:'Drafts started', color:'text-amber-500 bg-amber-50/80' },
-            { label:'Completed', value:USER.totalReviews, sub:'Total reviews', color:'text-emerald-600 bg-emerald-50/80' },
-            { label:'Rating', value:USER.rating, sub:`${USER.helpful}% helpful`, color:'text-[#59BAEE] bg-sky-50/80' },
+
           ].map(s => (
             <div key={s.label} className="bg-white/80 backdrop-blur-lg border border-slate-200/70 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3.5">
               <div className={`w-11 h-11 rounded-xl ${s.color} flex items-center justify-center text-xl font-extrabold`}>{s.value}</div>
