@@ -13,12 +13,36 @@ import DNABackground from '@/components/DNABackground';
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TEMPORARY: Route to home page for testing (backend not set up yet)
-    router.push('/home');
+    setError('');
+    setLoading(true);
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      setError('Please enter both email and password');
+      setLoading(false);
+      return;
+    }
+
+    // Reviewer credentials
+    if (trimmedEmail === 'reviewer@medsecond.com' && trimmedPassword === 'MedReview2026!') {
+      sessionStorage.setItem('reviewer_authenticated', 'true');
+      sessionStorage.setItem('reviewer_name', 'Dr. Rebecca Chen');
+      setTimeout(() => router.push('/reviewer/dashboard'), 100);
+    } else {
+      // Any other credentials = Patient (Sarah Mitchell)
+      sessionStorage.setItem('patient_authenticated', 'true');
+      sessionStorage.setItem('patient_name', 'Sarah Mitchell');
+      sessionStorage.setItem('patient_email', trimmedEmail);
+      setTimeout(() => router.push('/patient/dashboard'), 100);
+    }
   };
 
   return (
@@ -34,6 +58,12 @@ export default function SignInPage() {
             Welcome back. Please enter your details.
           </p>
         </div>
+
+        {error && (
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium text-center">
+            {error}
+          </div>
+        )}
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -94,9 +124,10 @@ export default function SignInPage() {
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform active:scale-95 shadow-md shadow-blue-200"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform active:scale-95 shadow-md shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign In
+              {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </div>
         </form>
