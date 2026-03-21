@@ -1,40 +1,23 @@
-import { Pool } from 'pg';
+import { createClient } from '@/utils/supabase/server'
 
 /**
- * Database connection pool.
- * Uses environment variables for configuration.
- * Recommended vars: DATABASE_URL or individual PGHOST, PGUSER, etc.
+ * Database access utility using Supabase.
  */
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // For local development without SSL, or with self-signed certs
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
 export const db = {
   /**
-   * Execute a SQL query.
-   * @param text The SQL query string
-   * @param params An array of values to replace placeholders ($1, $2, etc.)
+   * Get a Supabase server client instance.
    */
-  query: async (text: string, params?: any[]) => {
-    const start = Date.now();
-    try {
-      const res = await pool.query(text, params);
-      const duration = Date.now() - start;
-      console.log('Executed query', { text, duration, rows: res.rowCount });
-      return res;
-    } catch (error) {
-      console.error('Database query error', error);
-      throw error;
-    }
+  getSupabase: async () => {
+    return await createClient();
   },
 
   /**
-   * Get a client from the pool for transactions.
+   * Execute a query using the Supabase client.
+   * This is a simple wrapper to maintain some compatibility with the previous db.query pattern if needed,
+   * though using the Supabase client directly is preferred.
    */
-  getClient: async () => {
-    const client = await pool.connect();
-    return client;
+  query: async (table: string, queryBuilder: (supabase: any) => any) => {
+    const supabase = await createClient();
+    return await queryBuilder(supabase.from(table));
   },
 };

@@ -1,94 +1,61 @@
-import bcrypt from 'bcryptjs';
-import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
-
-const secretKey = "secret"; // TODO: Move to process.env.JWT_SECRET
-const key = new TextEncoder().encode(secretKey);
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const auth = {
   /**
-   * Securely hashes a plain-text password.
+   * Signs in a user with email and password.
    */
-  hashPassword: async (password: string) => {
-    const salt = await bcrypt.genSalt(10);
-    return bcrypt.hash(password, salt);
+  signIn: async (email: string, password: string) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    return { data, error }
   },
 
   /**
-   * Compares a plain-text password with its hashed version.
+   * Signs up a new user.
    */
-  verifyPassword: async (password: string, hash: string) => {
-    return bcrypt.compare(password, hash);
+  signUp: async (email: string, password: string, name: string, role: string) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          role,
+        },
+      },
+    })
+    return { data, error }
   },
 
   /**
-   * Signs a new JWT session token.
+   * Signs out the current user.
    */
-  encrypt: async (payload: any) => {
-    return await new SignJWT(payload)
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('2h') // Session expires in 2 hours
-      .sign(key);
+  signOut: async () => {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+    redirect('/auth/sign-in')
   },
 
   /**
-   * Verifies and decrypts a JWT session token.
-   */
-  decrypt: async (input: string): Promise<any> => {
-    const { payload } = await jwtVerify(input, key, {
-      algorithms: ['HS256'],
-    });
-    return payload;
-  },
-
-  /**
-   * Sets the session cookie for the user.
-   */
-  login: async (user: { id: string, role: string }) => {
-    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
-    const session = await auth.encrypt({ user, expires });
-
-    (await cookies()).set('session', session, { expires, httpOnly: true });
-  },
-
-  /**
-   * Removes the session cookie (Logout).
-   */
-  logout: async () => {
-    (await cookies()).set('session', '', { expires: new Date(0) });
-  },
-
-  /**
-   * Retrieves and verifies the current session from cookies.
+   * Retrieves the current user session.
    */
   getSession: async () => {
-    const session = (await cookies()).get('session')?.value;
-    if (!session) return null;
-    try {
-      return await auth.decrypt(session);
-    } catch (e) {
-      return null;
-    }
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    return session
   },
 
   /**
-   * Updates the current session if it exists.
+   * Retrieves the current user profile.
    */
-  updateSession: async (request: NextRequest) => {
-    const session = request.cookies.get('session')?.value;
-    if (!session) return;
-
-    const parsed = await auth.decrypt(session);
-    parsed.expires = new Date(Date.now() + 2 * 60 * 60 * 1000);
-    const res = NextResponse.next();
-    res.cookies.set({
-      name: 'session',
-      value: await auth.encrypt(parsed),
-      httpOnly: true,
-      expires: parsed.expires,
-    });
-    return res;
+  getUser: async () => {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    return user
   },
-};
+}
