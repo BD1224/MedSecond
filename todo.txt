@@ -33,38 +33,6 @@ src/app/
     reports/page.tsx
     users/page.tsx
 
-  api/
-    (backend route handlers)
-    auth/
-      register/route.ts
-      login/route.ts
-      logout/route.ts
-      reset-password/route.ts
-      session/route.ts
-    users/
-      profile/route.ts
-    patients/
-      cases/route.ts
-      files/route.ts
-    assessors/
-      cases/route.ts
-      profile/route.ts
-      responses/route.ts
-      reviews/route.ts
-      verification/route.ts
-    matching/
-      assign/route.ts
-    messages/
-      threads/route.ts
-      messages/route.ts
-    admin/
-      cases/route.ts
-      verification/route.ts
-      reports/route.ts
-      users/route.ts
-    health/
-      route.ts
-
 src/components/
   navbar.tsx
   sidebar.tsx
@@ -96,7 +64,14 @@ src/lib/
 src/styles/
   globals.css
 
-db/
+# DATABASE & DATA FETCHING STRATEGY
+    2 - [X] ALL data fetching MUST use the Supabase client fluent API (e.g.,
+      supabase.from('table').select()).
+    3 - [X] NO RAW SQL strings are allowed in the application code.
+    4 - [X] Files in @/db/tables/ are SQL SNIPPETS only. They must be manually pasted into the
+      Supabase SQL Editor to set up the schema. They are not executed by the application.
+    5 - [X] Authentication MUST go through Supabase Auth (via @src/lib/auth.ts).
+db/ 
   tables/
     users.sql
     patient_profiles.sql

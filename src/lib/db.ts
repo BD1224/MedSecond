@@ -1,23 +1,22 @@
 import { createClient } from '@/utils/supabase/server'
 
 /**
- * Database access utility using Supabase.
+ * Centralized Database Access Utility.
+ * 
+ * This utility provides a consistent way to obtain a Supabase client instance.
+ * By using this centralized entry point, we can easily manage global configurations
+ * or add error handling/logging in one place if needed in the future.
  */
 export const db = {
   /**
-   * Get a Supabase server client instance.
+   * Returns a fresh Supabase client instance for server-side operations.
+   * Use this for all data fetching and mutations in Server Components and Server Actions.
+   * 
+   * @example
+   * const supabase = await db.client();
+   * const { data } = await supabase.from('table').select('*');
    */
-  getSupabase: async () => {
+  client: async () => {
     return await createClient();
-  },
-
-  /**
-   * Execute a query using the Supabase client.
-   * This is a simple wrapper to maintain some compatibility with the previous db.query pattern if needed,
-   * though using the Supabase client directly is preferred.
-   */
-  query: async (table: string, queryBuilder: (supabase: any) => any) => {
-    const supabase = await createClient();
-    return await queryBuilder(supabase.from(table));
   },
 };
