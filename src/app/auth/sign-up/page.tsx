@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DNABackground from '@/components/DNABackground';
+import { handleSignUp } from '@/app/auth/actions';
 
-type AccountType = 'patient' | 'reviewer' | null;
+type AccountType = 'patient' | 'assessor' | null;
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function SignUpPage() {
     setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -60,26 +61,36 @@ export default function SignUpPage() {
       return;
     }
 
-    if (accountType === 'reviewer' && (!role || !credentials)) {
+    if (accountType === 'assessor' && (!role || !credentials)) {
       setError('Please provide your role and credentials');
       setLoading(false);
       return;
     }
 
-    // Store account info
-    sessionStorage.setItem(`${accountType}_authenticated`, 'true');
-    sessionStorage.setItem(`${accountType}_name`, fullName);
-    sessionStorage.setItem(`${accountType}_email`, email);
+    // Call server action to sign up with Supabase
+    const result = await handleSignUp(
+      email,
+      password,
+      fullName,
+      accountType!,
+      accountType === 'assessor'
+        ? { role, institution, credentials }
+        : undefined
+    );
 
-    if (accountType === 'reviewer') {
-      sessionStorage.setItem('reviewer_role', role);
-      sessionStorage.setItem('reviewer_institution', institution);
-      sessionStorage.setItem('reviewer_credentials', credentials);
+    console.log('Signup response:', result);
+
+    if (!result.success) {
+      console.error('Signup failed:', result.error);
+      setError(result.error || 'Signup failed');
+      setLoading(false);
+      return;
     }
 
-    // Redirect
-    const redirectPath = accountType === 'reviewer' ? '/reviewer/dashboard' : '/patient/dashboard';
-    setTimeout(() => router.push(redirectPath), 100);
+    console.log('Signup successful, redirecting to dashboard');
+    // Redirect to appropriate dashboard on success
+    const redirectPath = accountType === 'assessor' ? '/reviewer/dashboard' : '/patient/dashboard';
+    router.push(redirectPath);
   };
 
   const Icon = {
@@ -150,7 +161,7 @@ export default function SignUpPage() {
 
               {/* REVIEWER CARD */}
               <button
-                onClick={() => handleAccountTypeSelect('reviewer')}
+                onClick={() => handleAccountTypeSelect('assessor')}
                 className="group relative bg-white/90 backdrop-blur-xl border-2 border-slate-200 rounded-2xl p-8 shadow-sm hover:shadow-xl hover:border-emerald-400/40 transition-all duration-300 text-left overflow-hidden"
               >
                 {/* Gradient background on hover */}
@@ -212,17 +223,17 @@ export default function SignUpPage() {
             <div className="bg-white/95 backdrop-blur-xl border border-slate-200/70 rounded-2xl p-8 shadow-xl">
               <div className="text-center mb-8">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg ${
-                  accountType === 'reviewer'
+                  accountType === 'assessor'
                     ? 'bg-gradient-to-br from-emerald-400 to-teal-500 shadow-emerald-500/20'
                     : 'bg-gradient-to-br from-[#0A81FF] to-[#3A9BFF] shadow-blue-500/20'
                 } text-white`}>
-                  {accountType === 'reviewer' ? Icon.stethoscope : Icon.user}
+                  {accountType === 'assessor' ? Icon.stethoscope : Icon.user}
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-1">
-                  {accountType === 'reviewer' ? 'Apply as Medical Reviewer' : 'Create Patient Account'}
+                  {accountType === 'assessor' ? 'Apply as Medical Reviewer' : 'Create Patient Account'}
                 </h2>
                 <p className="text-sm text-slate-500">
-                  {accountType === 'reviewer' 
+                  {accountType === 'assessor' 
                     ? 'Join our verified reviewer network' 
                     : 'Get started with your second opinion journey'}
                 </p>
@@ -268,7 +279,7 @@ export default function SignUpPage() {
                 </div>
 
                 {/* Reviewer-specific fields */}
-                {accountType === 'reviewer' && (
+                {accountType === 'assessor' && (
                   <>
                     {/* Role */}
                     <div>
@@ -362,7 +373,7 @@ export default function SignUpPage() {
                 {/* Trust message */}
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex gap-2.5 text-xs text-slate-700">
                   <span className="text-lg">🔒</span>
-                  <span>Your data is encrypted and secure. {accountType === 'reviewer' && 'Credentials are verified before activation.'}</span>
+                  <span>Your data is encrypted and secure. {accountType === 'assessor' && 'Credentials are verified before activation.'}</span>
                 </div>
 
                 {/* Submit Button */}
@@ -370,14 +381,14 @@ export default function SignUpPage() {
                   type="submit"
                   disabled={loading}
                   className={`w-full py-3 rounded-xl text-white text-sm font-semibold shadow-lg transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    accountType === 'reviewer'
+                    accountType === 'assessor'
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:shadow-emerald-500/30'
                       : 'bg-gradient-to-r from-[#0A81FF] to-[#3A9BFF] hover:shadow-blue-500/30'
                   }`}
                 >
                   {loading 
                     ? 'Creating Account...' 
-                    : accountType === 'reviewer'
+                    : accountType === 'assessor'
                     ? 'Apply as Medical Reviewer'
                     : 'Create Patient Account'}
                 </button>

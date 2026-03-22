@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DNABackground from '@/components/DNABackground';
+import { getUserProfile, handleLogout } from '@/app/auth/actions';
 
-const USER = { name: 'Sarah Mitchell', initials: 'SM', email: 'sarah.mitchell@email.com', age: 34, activeCases: 2, completedCases: 5, savedRecords: 12 };
+// Mock user data - will be replaced with Supabase data
+const MOCK_USER = { name: 'Sarah Mitchell', initials: 'SM', email: 'sarah.mitchell@email.com', age: 34, activeCases: 2, completedCases: 5, savedRecords: 12 };
 
 const CASES = [
   { id: 1, title: 'Skin lesion on left forearm', date: 'Mar 14, 2026', opinions: 3, status: 'active' as const, label: 'In Review' },
@@ -49,23 +51,70 @@ export default function PatientDashboard() {
   const router = useRouter();
   const [caseTab, setCaseTab] = useState<'active' | 'completed'>('active');
   const [authed, setAuthed] = useState(false);
+  const [user, setUser] = useState(MOCK_USER);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (sessionStorage.getItem('patient_authenticated') !== 'true') {
-      router.push('/auth/sign-in');
-    } else {
-      setAuthed(true);
-    }
+    const checkAuth = async () => {
+      try {
+        // Call server action to get authenticated user profile
+        const result = await getUserProfile();
+
+        if (!result.success || !result.user) {
+          // No authenticated user - redirect to sign-in
+          router.push('/auth/sign-in');
+          return;
+        }
+
+        // Set user data from server
+        const userData = result.user;
+        setUser({
+          name: userData.name,
+          initials: userData.name
+            .split(' ')
+            .map((n: string) => n[0])
+            .join('')
+            .toUpperCase(),
+          email: userData.email,
+          age: 34,
+          activeCases: 2,
+          completedCases: 5,
+          savedRecords: 12,
+        });
+
+        setAuthed(true);
+      } catch (err) {
+        console.error('Auth check error:', err);
+        router.push('/auth/sign-in');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
   }, [router]);
 
-  function handleLogout() {
-    sessionStorage.removeItem('patient_authenticated');
-    sessionStorage.removeItem('patient_name');
-    sessionStorage.removeItem('patient_email');
-    router.push('/auth/sign-in');
+  async function handleLogoutClick() {
+    try {
+      // Call server action to sign out
+      const result = await handleLogout();
+      if (result.success) {
+        // Clear any sessionStorage data
+        sessionStorage.removeItem('patient_authenticated');
+        sessionStorage.removeItem('patient_name');
+        sessionStorage.removeItem('patient_email');
+        router.push('/auth/sign-in');
+      } else {
+        console.error('Logout failed:', result.error);
+        router.push('/auth/sign-in');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+      router.push('/auth/sign-in');
+    }
   }
 
-  if (!authed) return null;
+  if (!authed || loading) return null;
 
   const filteredCases = CASES.filter(c => c.status === caseTab);
 
@@ -90,11 +139,11 @@ export default function PatientDashboard() {
             <button className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-[#0A81FF] hover:bg-blue-50/60 transition-all">
               {Icon.settings}
             </button>
-            <button onClick={handleLogout} className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50/60 transition-all" title="Sign Out">
+            <button onClick={handleLogoutClick} className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50/60 transition-all" title="Sign Out">
               {Icon.logout}
             </button>
             <div className="ml-1.5 w-8 h-8 rounded-full bg-gradient-to-br from-[#0A81FF] to-[#8DE0F6] flex items-center justify-center text-white text-[0.65rem] font-extrabold shadow-md shadow-blue-500/15 cursor-pointer">
-              {USER.initials}
+              {user.initials}
             </div>
           </div>
         </div>
@@ -104,12 +153,12 @@ export default function PatientDashboard() {
 
         <section className="flex flex-col items-center text-center gap-3">
           <div className="w-[88px] h-[88px] rounded-full bg-gradient-to-br from-[#0A81FF] to-[#8DE0F6] flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-blue-500/20 border-[3px] border-white">
-            {USER.initials}
+            {user.initials}
           </div>
           <div>
             <p className="text-xs font-semibold text-[#0A81FF] mb-0.5">Welcome back</p>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">{USER.name}</h1>
-            <p className="text-xs text-slate-400 mt-1">{USER.activeCases} active cases · {USER.savedRecords} saved records</p>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">{user.name}</h1>
+            <p className="text-xs text-slate-400 mt-1">{user.activeCases} active cases · {user.savedRecords} saved records</p>
           </div>
           <div className="flex gap-2.5 flex-wrap justify-center mt-1">
             <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0A81FF] to-[#3A9BFF] text-white text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all">
@@ -128,18 +177,18 @@ export default function PatientDashboard() {
           <div className="bg-white/80 backdrop-blur-lg border border-slate-200/70 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3.5">
               <div className="w-[52px] h-[52px] rounded-[14px] bg-gradient-to-br from-[#0A81FF] to-[#8DE0F6] flex items-center justify-center text-white text-lg font-extrabold shadow-lg shadow-blue-500/20">
-                {USER.initials}
+                {user.initials}
               </div>
               <div>
-                <div className="text-[0.95rem] font-bold text-slate-900">{USER.name}</div>
-                <div className="text-xs text-slate-400">Age {USER.age} · Patient</div>
-                <div className="text-[0.68rem] text-slate-300 mt-0.5">{USER.email}</div>
+                <div className="text-[0.95rem] font-bold text-slate-900">{user.name}</div>
+                <div className="text-xs text-slate-400"> Patient</div>
+                <div className="text-[0.68rem] text-slate-300 mt-0.5">{user.email}</div>
               </div>
             </div>
           </div>
           {[
-            { label: 'Active Cases', value: USER.activeCases, sub: 'Awaiting opinions', color: 'text-[#0A81FF] bg-blue-50/80' },
-            { label: 'Completed', value: USER.completedCases, sub: 'All resolved', color: 'text-emerald-600 bg-emerald-50/80' },
+            { label: 'Active Cases', value: user.activeCases, sub: 'Awaiting opinions', color: 'text-[#0A81FF] bg-blue-50/80' },
+            { label: 'Completed', value: user.completedCases, sub: 'All resolved', color: 'text-emerald-600 bg-emerald-50/80' },
           ].map(s => (
             <div key={s.label} className="bg-white/80 backdrop-blur-lg border border-slate-200/70 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3.5">
               <div className={`w-11 h-11 rounded-xl ${s.color} flex items-center justify-center text-2xl font-extrabold`}>{s.value}</div>
