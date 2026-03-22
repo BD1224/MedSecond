@@ -2,14 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Sun, Moon } from 'lucide-react';
 import DNABackground from '@/components/DNABackground';
+import { EditProfileModal } from '@/components/EditProfileModal';
 import { getUserProfile, handleLogout } from '@/app/auth/actions';
 import { getAvailableCases, submitCaseResponse, getClosedCases, getCaseDetail } from '@/app/reviewer/actions';
+import { useTheme } from '@/lib/hooks/useTheme';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu';
 
 const USER = {
   name: 'Dr. Rebecca Chen', initials: 'RC', specialty: 'Internal Medicine',
   email: 'reviewer@medsecond.com',
-  awaiting: 0, inProgress: 0,
+  awaiting: 0, inProgress: 0, profilePictureUrl: '',
 };
 
 const MOCK_CASES = [
@@ -51,6 +63,7 @@ const Icon = {
 
 export default function ReviewerDashboard() {
   const router = useRouter();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [caseTab, setCaseTab] = useState<'open'|'closed'>('open');
   const [authed, setAuthed] = useState(false);
   const [assessor, setAssessor] = useState<any>(null);
@@ -64,6 +77,7 @@ export default function ReviewerDashboard() {
   const [responseText, setResponseText] = useState('');
   const [responseLoading, setResponseLoading] = useState(false);
   const [responseError, setResponseError] = useState<string | null>(null);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -76,15 +90,40 @@ export default function ReviewerDashboard() {
         }
         
         setAuthed(true);
+        
+        // Load profile data from localStorage scoped by user ID
+        const userId = result.user?.id;
+        const profileStorageKey = `userProfile_${userId}`;
+        const savedProfile = localStorage.getItem(profileStorageKey);
+        let profilePictureUrl = '';
+        let assessorName = result.user.name || 'Dr. Reviewer';
+        let assessorData: any = {};
+        
+        if (savedProfile) {
+          try {
+            const parsed = JSON.parse(savedProfile);
+            profilePictureUrl = parsed.profilePictureUrl || '';
+            assessorName = parsed.name || result.user.name || 'Dr. Reviewer';
+            assessorData = parsed;
+          } catch (e) {
+            console.error('Error parsing saved profile:', e);
+          }
+        }
+        
         setAssessor({
-          name: result.user.name || 'Dr. Reviewer',
+          name: assessorName,
           email: result.user.email,
-          initials: (result.user.name || 'DR')
+          initials: assessorName
             .split(' ')
             .map((n: string) => n[0])
             .join('')
             .toUpperCase(),
           id: result.user.id,
+          profilePictureUrl: profilePictureUrl,
+          specialty: assessorData.specialty || 'Internal Medicine',
+          institution: assessorData.institution || '',
+          credentialsSummary: assessorData.credentialsSummary || '',
+          bio: assessorData.bio || '',
         });
         
         // Fetch available cases for this assessor
@@ -144,6 +183,29 @@ export default function ReviewerDashboard() {
     };
     
     checkAuth();
+    
+    // Listen for profile updates
+    const handleProfileUpdate = (e: any) => {
+      const updatedData = e.detail;
+      setAssessor((prev: any) => ({
+        ...prev,
+        name: updatedData.name || prev.name,
+        initials: (updatedData.name || prev.name)
+          .split(' ')
+          .map((n: string) => n[0])
+          .join('')
+          .toUpperCase(),
+        email: updatedData.email || prev.email,
+        profilePictureUrl: updatedData.profilePictureUrl || prev.profilePictureUrl || '',
+        specialty: updatedData.specialty || prev.specialty,
+        institution: updatedData.institution || prev.institution,
+        credentialsSummary: updatedData.credentialsSummary || prev.credentialsSummary,
+        bio: updatedData.bio || prev.bio,
+      }));
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
   }, [router]);
 
   if (!authed) return null;
@@ -239,14 +301,53 @@ export default function ReviewerDashboard() {
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-[60px] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-[9px] bg-gradient-to-br from-[#0A81FF] to-[#59BAEE] flex items-center justify-center shadow-md shadow-blue-500/20">{Icon.dna}</div>
-            <span className="text-[1.05rem] font-extrabold tracking-tight text-slate-900">Med<span className="text-[#0A81FF]">Second</span></span>
-            <span className="ml-1 text-[0.58rem] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600">Assessor</span>
+            <span className="text-[1.05rem] font-extrabold tracking-tight text-slate-900 font-[Sora]">Med<span className="text-[#0A81FF]">Second</span></span>
           </div>
           <div className="flex items-center gap-1">
-            <button className="relative w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-[#0A81FF] hover:bg-blue-50/60 transition-all">{Icon.bell}<span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#0A81FF] rounded-full ring-2 ring-white"/></button>
-            <button className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-[#0A81FF] hover:bg-blue-50/60 transition-all">{Icon.settings}</button>
-            <button onClick={handleLogoutClick} className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50/60 transition-all" title="Sign Out">{Icon.logout}</button>
-            <div className="ml-1.5 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-[0.65rem] font-extrabold shadow-md shadow-emerald-500/15">{assessor?.initials || 'DR'}</div>
+            {mounted && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-[#0A81FF] hover:bg-blue-50/60 dark:text-slate-500 dark:hover:text-[#00D9FF] dark:hover:bg-slate-800/60 transition-all" title="Settings">
+                    {Icon.settings}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem 
+                    onClick={() => setEditProfileOpen(true)}
+                    className="cursor-pointer"
+                  >
+                    Edit Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={theme} onValueChange={(value) => toggleTheme(value as 'light' | 'dark')}>
+                    <DropdownMenuRadioItem value="light" className="cursor-pointer flex items-center">
+                      <Sun className="w-4 h-4 mr-2" />
+                      Light Mode
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="dark" className="cursor-pointer flex items-center">
+                      <Moon className="w-4 h-4 mr-2" />
+                      Dark Mode
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogoutClick} className="cursor-pointer text-red-600">
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {!mounted && (
+              <button className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-400 hover:text-[#0A81FF] hover:bg-blue-50/60 transition-all">
+                {Icon.settings}
+              </button>
+            )}
+            <div className="ml-1.5 w-8 h-8 rounded-full bg-gradient-to-br from-[#0A81FF] to-[#8DE0F6] flex items-center justify-center text-white text-[0.65rem] font-extrabold shadow-md shadow-blue-500/15 cursor-pointer overflow-hidden">
+              {assessor?.profilePictureUrl ? (
+                <img src={assessor.profilePictureUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                assessor?.initials || 'DR'
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -255,16 +356,21 @@ export default function ReviewerDashboard() {
 
         {/* GREETING */}
         <section className="flex flex-col items-center text-center gap-3">
-          <div className="w-[88px] h-[88px] rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-emerald-500/20 border-[3px] border-white">{assessor?.initials || 'DR'}</div>
+          <div className="w-[88px] h-[88px] rounded-full bg-gradient-to-br from-[#0A81FF] to-[#8DE0F6] flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-blue-500/20 border-[3px] border-white overflow-hidden">
+            {assessor?.profilePictureUrl ? (
+              <img src={assessor.profilePictureUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              assessor?.initials || 'DR'
+            )}
+          </div>
           <div>
-            <p className="text-xs font-semibold text-emerald-600 mb-0.5">Welcome back, Doctor</p>
+            <p className="text-xs font-semibold text-[#0A81FF] mb-0.5">Welcome back</p>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">{assessor?.name || 'Dr. Reviewer'}</h1>
             <p className="text-xs text-slate-400 mt-1">{assessor?.email || 'reviewer@medsecond.com'} · {cases.filter(c => c.status === 'open').length} cases awaiting review</p>
           </div>
           <div className="flex gap-2.5 flex-wrap justify-center mt-1">
             <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0A81FF] to-[#3A9BFF] text-white text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all">{Icon.eye} Browse Open Cases</button>
             <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-sm font-semibold shadow-sm hover:bg-white hover:-translate-y-0.5 transition-all">{Icon.folder} My Reviews</button>
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-sm font-semibold shadow-sm hover:bg-white hover:-translate-y-0.5 transition-all">{Icon.user} My Profile</button>
           </div>
         </section>
 
@@ -543,6 +649,13 @@ export default function ReviewerDashboard() {
           </div>
         </div>
       )}
+
+      <EditProfileModal
+        isOpen={editProfileOpen}
+        onClose={() => setEditProfileOpen(false)}
+        userRole="assessor"
+        userData={assessor || {}}
+      />
     </div>
   );
 }
