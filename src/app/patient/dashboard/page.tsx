@@ -260,7 +260,7 @@ export default function PatientDashboard() {
           <div>
             <p className="text-xs font-semibold text-[#0A81FF] mb-0.5">Welcome back</p>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">{user.name}</h1>
-            <p className="text-xs text-slate-400 mt-1">{user.activeCases} active cases · {user.savedRecords} saved records</p>
+            <p className="text-xs text-slate-400 mt-1">{user.activeCases} active cases</p>
           </div>
           <div className="flex gap-2.5 flex-wrap justify-center mt-1">
             <button onClick={() => router.push('/patient/cases/new')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0A81FF] to-[#3A9BFF] text-white text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all">
