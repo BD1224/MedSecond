@@ -269,9 +269,6 @@ export default function PatientDashboard() {
             <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-sm font-semibold shadow-sm hover:bg-white hover:-translate-y-0.5 transition-all">
               {Icon.upload} Upload Records
             </button>
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-sm font-semibold shadow-sm hover:bg-white hover:-translate-y-0.5 transition-all">
-              {Icon.shield} Digital Twin
-            </button>
           </div>
         </section>
 
@@ -377,7 +374,7 @@ export default function PatientDashboard() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Medical Records</h2>
-              <p className="text-[0.7rem] text-slate-400 mt-0.5">Your Digital Health Twin — all records in one place</p>
+              <p className="text-[0.7rem] text-slate-400 mt-0.5">Organize and manage all your health records</p>
             </div>
             <button className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-xs font-semibold shadow-sm hover:bg-white transition-all">
               {Icon.upload} Upload
