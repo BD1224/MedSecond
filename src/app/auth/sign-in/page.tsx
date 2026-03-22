@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DNABackground from '@/components/DNABackground';
+import { handleSignIn } from '@/app/auth/actions';
 
 /**
  * SignInPage: A modern login interface for MedSecond.
- * Handles credential submission to /api/auth/login and redirects users
- * to their respective dashboards based on their role.
+ * Integrates with Supabase Auth for secure authentication.
+ * Redirects users to appropriate dashboards based on their role (patient/assessor).
  */
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -31,18 +32,22 @@ export default function SignInPage() {
       return;
     }
 
-    // Reviewer credentials
-    if (trimmedEmail === 'reviewer@medsecond.com' && trimmedPassword === 'MedReview2026!') {
-      sessionStorage.setItem('reviewer_authenticated', 'true');
-      sessionStorage.setItem('reviewer_name', 'Dr. Rebecca Chen');
-      setTimeout(() => router.push('/reviewer/dashboard'), 100);
-    } else {
-      // Any other credentials = Patient (Sarah Mitchell)
-      sessionStorage.setItem('patient_authenticated', 'true');
-      sessionStorage.setItem('patient_name', 'Sarah Mitchell');
-      sessionStorage.setItem('patient_email', trimmedEmail);
-      setTimeout(() => router.push('/patient/dashboard'), 100);
+    // Call server action to authenticate with Supabase
+    const result = await handleSignIn(trimmedEmail, trimmedPassword);
+
+    console.log('Sign-in response:', result);
+
+    if (!result.success) {
+      console.error('Sign-in failed:', result.error);
+      setError(result.error || 'Sign-in failed');
+      setLoading(false);
+      return;
     }
+
+    // Redirect based on user role
+    console.log('Sign-in successful, redirecting to dashboard');
+    const redirectPath = result.role === 'assessor' ? '/reviewer/dashboard' : '/patient/dashboard';
+    router.push(redirectPath);
   };
 
   return (

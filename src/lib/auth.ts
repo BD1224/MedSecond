@@ -25,6 +25,7 @@ export const auth = {
    */
   signUp: async (email: string, password: string, name: string, role: string) => {
     const supabase = await db.client()
+    console.log('Attempting signup with:', { email, name, role });
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -35,6 +36,12 @@ export const auth = {
         },
       },
     })
+    if (error) {
+      console.error('Supabase auth.signUp error:', error);
+    }
+    if (data) {
+      console.log('Supabase auth.signUp success:', { userId: data.user?.id });
+    }
     return { data, error }
   },
 
