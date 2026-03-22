@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import './theme.css';
 
 @tailwind base;
 @tailwind components;
@@ -42,4 +43,145 @@ body {
   height: 100%;
   font-family: 'Space Mono', monospace;
   background: transparent;
+}
+
+/* Light mode (default) */
+html[data-theme="light"] {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* Dark mode */
+html[data-theme="dark"] {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+  color: #ffffff;
+}
+
+html[data-theme="dark"] body {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+  color: #ffffff;
+}
+
+/* Dark mode text colors */
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .text-slate-900 {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .text-slate-700 {
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .text-slate-500 {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .text-slate-400 {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .bg-white {
+  background-color: #1e293b;
+}
+
+html[data-theme="dark"] .bg-white\/80 {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+html[data-theme="dark"] .bg-slate-50 {
+  background-color: #0f172a;
+}
+
+html[data-theme="dark"] .bg-slate-100\/80 {
+  background-color: rgba(15, 23, 42, 0.8);
+}
+
+/* Dark mode dropdown menu styles */
+html[data-theme="dark"] [role="menu"],
+html[data-theme="dark"] [role="menuitem"] {
+  background-color: #1e293b;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .min-w-\[8rem\] {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+
+/* Override inline styles for dropdown content in dark mode */
+html[data-theme="dark"] [class*="bg-white/90"] {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] [class*="text-slate-900"] {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] [class*="border-slate-200"] {
+  border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .border-slate-200\/70 {
+  border-color: rgba(51, 65, 85, 0.7);
+}
+
+html[data-theme="dark"] .border-slate-200 {
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .bg-red-50\/80 {
+  background-color: rgba(127, 29, 29, 0.8);
+}
+
+html[data-theme="dark"] .bg-slate-50\/80 {
+  background-color: rgba(15, 23, 42, 0.8);
+}
+
+html[data-theme="dark"] header {
+  background-color: rgba(30, 41, 59, 0.7);
+  border-color: rgba(51, 65, 85, 0.6);
+}
+
+/* Dark mode - Dialog and Modal Styling */
+html[data-theme="dark"] [role="dialog"] {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] [role="dialog"] h1,
+html[data-theme="dark"] [role="dialog"] h2,
+html[data-theme="dark"] [role="dialog"] h3,
+html[data-theme="dark"] [role="dialog"] label {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] [role="dialog"] input[disabled],
+html[data-theme="dark"] [role="dialog"] input[type="email"][disabled] {
+  background-color: #0f172a;
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] [role="dialog"] input:not([disabled]),
+html[data-theme="dark"] [role="dialog"] select,
+html[data-theme="dark"] [role="dialog"] textarea {
+  background-color: #334155;
+  color: #f1f5f9;
+  border-color: rgba(51, 65, 85, 0.7);
+}
+
+html[data-theme="dark"] [role="dialog"] input::placeholder,
+html[data-theme="dark"] [role="dialog"] textarea::placeholder {
+  color: #64748b;
+}
+
+html[data-theme="dark"] [role="dialog"] input:focus,
+html[data-theme="dark"] [role="dialog"] select:focus,
+html[data-theme="dark"] [role="dialog"] textarea:focus {
+  border-color: #0A81FF;
+  background-color: #1e293b;
 }

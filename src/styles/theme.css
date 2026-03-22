@@ -1,0 +1,93 @@
+/**
+ * Ocean Breeze Theme CSS Variables
+ * Automatically injected by themeProvider.ts
+ */
+
+:root {
+  /* Primary Colors */
+  --color-primary: #0A81FF;
+  --color-primary-light: #59BAEE;
+  --color-primary-lighter: #8DE0F6;
+
+  /* Semantic Colors */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #06B6D4;
+
+  /* Backgrounds */
+  --color-background: #FFFFFF;
+  --color-background-secondary: #F9FAFB;
+  --color-background-tertiary: #F3F4F6;
+
+  /* Surfaces */
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F9FAFB;
+  --color-surface-active: #EFF6FF;
+  --color-surface-disabled: #F3F4F6;
+
+  /* Text */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-tertiary: #9CA3AF;
+  --color-text-inverse: #FFFFFF;
+
+  /* Borders */
+  --color-border: #E5E7EB;
+  --color-border-light: #F3F4F6;
+  --color-border-dark: #D1D5DB;
+
+  /* DNA Visualization */
+  --color-dna-strand-1: #0A81FF;
+  --color-dna-strand-2: #59BAEE;
+  --color-dna-strand-3: #8DE0F6;
+}
+
+/* Utility Classes */
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Text utilities */
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}
+
+/* Background utilities */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-surface {
+  background-color: var(--color-surface);
+}
+
+.bg-background {
+  background-color: var(--color-background);
+}
+
+/* Border utilities */
+.border-primary {
+  border-color: var(--color-border);
+}
+
+/* Smooth transitions for theme switches */
+html {
+  --transition-duration: 150ms;
+}
+
+* {
+  transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease;
+}

@@ -3,23 +3,48 @@
 import { useEffect, useRef } from 'react';
 
 export default function DNABackground() {
-  console.log('✅ DNABackground component rendered on client');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const C = canvasRef.current;
-    if (!C) {
-      console.log('Canvas ref not available');
-      return;
-    }
-
+    if (!C) return;
     const ctx = C.getContext('2d');
-    if (!ctx) {
-      console.log('Could not get 2d context');
-      return;
+    if (!ctx) return;
+
+    const bgCanvas = document.createElement('canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    if (!bgCtx) return;
+
+    // Theme-aware colors
+    function getThemeColors() {
+      const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (isDarkMode) {
+        return {
+          primary: '#00D9FF',      // Cyan
+          secondary: '#0099CC',    // Dark cyan
+          tertiary: '#00FFFF',     // Light cyan
+          overlay: 'rgba(0,0,0,0.3)', // Dark overlay
+          dust: '#4DB8FF'          // Light blue
+        };
+      } else {
+        return {
+          primary: '#0A81FF',      // Blue
+          secondary: '#59BAEE',    // Light blue
+          tertiary: '#8DE0F6',     // Sky blue
+          overlay: 'rgba(255,255,255,0.5)', // Light overlay
+          dust: '#0A81FF'          // Blue
+        };
+      }
     }
 
-    console.log('DNABackground initialized');
+    let themeColors = getThemeColors();
+
+    // Listen for theme changes
+    const handleThemeChange = () => {
+      themeColors = getThemeColors();
+    };
+
+    window.addEventListener('themeChange', handleThemeChange);
 
     let animId: number;
     let alive = true;
@@ -33,7 +58,8 @@ export default function DNABackground() {
       if (!C) return;
       W = C.width = Math.max(1, window.innerWidth);
       H = C.height = Math.max(1, window.innerHeight);
-      console.log('Resized canvas to:', W, H);
+      bgCanvas.width = W;
+      bgCanvas.height = H;
     }
 
     function rgba(hex: string, a: number) {
@@ -64,42 +90,177 @@ export default function DNABackground() {
 
     const MAX_FLOW = 500;
     let flows: Array<{
-      x: number;
-      y: number;
-      vx: number;
-      vy: number;
-      r: number;
-      alpha: number;
-      life: number;
-      ttl: number;
-      col: string;
+      x: number; y: number; vx: number; vy: number;
+      r: number; alpha: number; life: number; ttl: number; col: string;
     }> = [];
 
     function spawnFlow(x: number, y: number, col: string) {
       if (flows.length >= MAX_FLOW) return;
       const a = Math.random() * Math.PI * 2, sp = 0.4 + Math.random() * 1.8;
       flows.push({
-        x,
-        y,
-        vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp,
-        r: 0.6 + Math.random() * 2.2,
-        alpha: 0.5 + Math.random() * 0.5,
-        life: 0,
-        ttl: 40 + Math.random() * 100,
-        col,
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        r: 0.6 + Math.random() * 2.2, alpha: 0.5 + Math.random() * 0.5,
+        life: 0, ttl: 40 + Math.random() * 100, col,
       });
     }
 
     const dust = Array.from({ length: 60 }, () => ({
-      x: Math.random() * 3000,
-      y: Math.random() * 2000,
-      vx: (Math.random() - 0.5) * 0.12,
-      vy: (Math.random() - 0.5) * 0.12,
-      r: 0.3 + Math.random() * 0.7,
-      a: 0.1 + Math.random() * 0.2,
-      col: ['#0A81FF', '#59BAEE', '#8DE0F6'][Math.floor(Math.random() * 3)],
+      x: Math.random() * 3000, y: Math.random() * 2000,
+      vx: (Math.random() - 0.5) * 0.12, vy: (Math.random() - 0.5) * 0.12,
+      r: 0.3 + Math.random() * 0.7, a: 0.1 + Math.random() * 0.2,
+      col: themeColors.primary,
     }));
+
+    const bgLayers = [
+      {
+        // 75° diagonal
+        radius: 60,
+        pointsPerPx: 0.5,
+        twist: 0.045,
+        rotSpeed: 0.005,
+        opacity: 0.4,
+        strandWidth: 3.0,
+        rungWidth: 1.0,
+        blur: 6,
+        cx: 0.5, cy: 0.5,
+        oxA: 0.04, oyA: 0.04,
+        oxF: 0.04, oyF: 0.03,
+        oxP: 0.0, oyP: 1.0,
+        baseAngle: (75 * Math.PI) / 180,
+        angleAmp: 0.05,
+        angleFreq: 0.02,
+        anglePhase: 0.0,
+        themeAware: true,
+      },
+      {
+        // -45° opposite diagonal
+        radius: 70,
+        pointsPerPx: 0.45,
+        twist: 0.038,
+        rotSpeed: 0.006,
+        opacity: 0.5,
+        strandWidth: 3.5,
+        rungWidth: 1.2,
+        blur: 5,
+        cx: 0.5, cy: 0.5,
+        oxA: 0.04, oyA: 0.04,
+        oxF: 0.03, oyF: 0.04,
+        oxP: 2.5, oyP: 0.5,
+        baseAngle: -Math.PI / 4,
+        angleAmp: 0.05,
+        angleFreq: 0.02,
+        anglePhase: 2.0,
+        themeAware: true,
+      },
+    ];
+
+    function computeBgStrands(layer: typeof bgLayers[0], time: number) {
+      const centerX = (layer.cx + Math.sin(time * layer.oxF + layer.oxP) * layer.oxA) * W;
+      const centerY = (layer.cy + Math.sin(time * layer.oyF + layer.oyP) * layer.oyA) * H;
+
+      const angle = layer.baseAngle + Math.sin(time * layer.angleFreq + layer.anglePhase) * layer.angleAmp;
+      const dirX = Math.cos(angle), dirY = Math.sin(angle);
+      const nrmX = -dirY, nrmY = dirX;
+
+      const diag = Math.sqrt(W * W + H * H);
+      const halfLen = diag * 0.8;
+      const N = Math.max(200, Math.floor(halfLen * 2 * layer.pointsPerPx));
+
+      const strand1: Array<{ x: number; y: number; d: number }> = [];
+      const strand2: Array<{ x: number; y: number; d: number }> = [];
+
+      for (let i = 0; i < N; i++) {
+        const f = (i / (N - 1)) * 2 - 1;
+        const spX = centerX + dirX * f * halfLen;
+        const spY = centerY + dirY * f * halfLen;
+        const wave = Math.sin(i * 0.03 + time * 0.1 + layer.oxP) * 14;
+        const fSpX = spX + nrmX * wave;
+        const fSpY = spY + nrmY * wave;
+        const helixAngle = i * layer.twist + tick * layer.rotSpeed;
+        const c1 = Math.cos(helixAngle), s1 = Math.sin(helixAngle);
+        const c2 = Math.cos(helixAngle + Math.PI), s2 = Math.sin(helixAngle + Math.PI);
+        strand1.push({ x: fSpX + nrmX * c1 * layer.radius, y: fSpY + nrmY * c1 * layer.radius, d: s1 });
+        strand2.push({ x: fSpX + nrmX * c2 * layer.radius, y: fSpY + nrmY * c2 * layer.radius, d: s2 });
+      }
+      return { strand1, strand2 };
+    }
+
+    function renderBgHelix(target: CanvasRenderingContext2D, layer: typeof bgLayers[0], time: number) {
+      const opc = layer.opacity;
+      const col1 = themeColors.primary;
+      const col2 = themeColors.secondary;
+      const glow = themeColors.tertiary;
+      const { strand1, strand2 } = computeBgStrands(layer, time);
+
+      for (let i = 1; i < strand1.length; i++) {
+        const p0 = strand1[i - 1], p1 = strand1[i];
+        const avgD = (p0.d + p1.d) / 2;
+        const dn = (avgD + 1) / 2;
+        const segAlpha = (0.2 + 0.8 * dn) * opc;
+        target.beginPath();
+        target.moveTo(p0.x, p0.y);
+        target.lineTo(p1.x, p1.y);
+        target.strokeStyle = rgba(col1, segAlpha * 0.7);
+        target.lineWidth = layer.strandWidth * (0.5 + 0.5 * dn);
+        target.lineCap = 'round';
+        target.stroke();
+      }
+
+      for (let i = 1; i < strand2.length; i++) {
+        const p0 = strand2[i - 1], p1 = strand2[i];
+        const avgD = (p0.d + p1.d) / 2;
+        const dn = (avgD + 1) / 2;
+        const segAlpha = (0.2 + 0.8 * dn) * opc;
+        target.beginPath();
+        target.moveTo(p0.x, p0.y);
+        target.lineTo(p1.x, p1.y);
+        target.strokeStyle = rgba(col2, segAlpha * 0.6);
+        target.lineWidth = layer.strandWidth * (0.5 + 0.5 * dn);
+        target.lineCap = 'round';
+        target.stroke();
+      }
+
+      const rungStep = Math.max(1, Math.floor(strand1.length / 70));
+      for (let i = 0; i < strand1.length; i += rungStep) {
+        const p1 = strand1[i], p2 = strand2[i];
+        const avgD = (p1.d + p2.d) / 2;
+        const dn = (avgD + 1) / 2;
+        const lineAlpha = (0.1 + 0.5 * dn) * opc;
+        target.beginPath();
+        target.moveTo(p1.x, p1.y);
+        target.lineTo(p2.x, p2.y);
+        target.strokeStyle = rgba(col1, lineAlpha);
+        target.lineWidth = layer.rungWidth * (0.4 + 0.6 * dn);
+        target.lineCap = 'round';
+        target.stroke();
+      }
+
+      const dotStep = Math.max(1, Math.floor(strand1.length / 90));
+      for (let i = 0; i < strand1.length; i += dotStep) {
+        const pts = [
+          { ...strand1[i], s: 1 },
+          { ...strand2[i], s: 2 },
+        ];
+        for (const p of pts) {
+          const dn = (p.d + 1) / 2;
+          const r = (1.0 + 3.0 * dn) * (layer.radius / 65);
+          const a = (0.2 + 0.8 * dn) * opc;
+          const col = p.s === 1 ? col1 : col2;
+          target.beginPath();
+          target.arc(p.x, p.y, r * 2.2, 0, 6.28);
+          target.fillStyle = rgba(col, a * 0.08);
+          target.fill();
+          target.beginPath();
+          target.arc(p.x, p.y, r, 0, 6.28);
+          target.fillStyle = rgba(col, a * 0.85);
+          target.fill();
+          target.beginPath();
+          target.arc(p.x, p.y, r * 0.3, 0, 6.28);
+          target.fillStyle = rgba(glow, a * 0.6);
+          target.fill();
+        }
+      }
+    }
 
     function frame() {
       if (W === 0 || H === 0) {
@@ -110,29 +271,32 @@ export default function DNABackground() {
       tick++;
       const time = tick * 0.008;
 
-      ctx!.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx!.fillStyle = themeColors.overlay;
       ctx!.fillRect(0, 0, W, H);
 
       for (const d of dust) {
-        d.x += d.vx;
-        d.y += d.vy;
+        d.x += d.vx; d.y += d.vy;
         if (d.x < -20) d.x = W + 20;
         if (d.x > W + 20) d.x = -20;
         if (d.y < -20) d.y = H + 20;
         if (d.y > H + 20) d.y = -20;
         ctx!.beginPath();
         ctx!.arc(d.x, d.y, d.r, 0, 6.28);
-        ctx!.fillStyle = rgba(d.col, d.a);
+        ctx!.fillStyle = rgba(themeColors.dust, d.a);
         ctx!.fill();
       }
 
-      const dots: Array<{
-        x: number;
-        y: number;
-        d: number;
-        s: number;
-        i: number;
-      }> = [];
+      for (const layer of bgLayers) {
+        bgCtx!.clearRect(0, 0, W, H);
+        renderBgHelix(bgCtx!, layer, time);
+        ctx!.save();
+        ctx!.filter = `blur(${layer.blur}px)`;
+        ctx!.globalAlpha = 0.8;
+        ctx!.drawImage(bgCanvas, 0, 0);
+        ctx!.restore();
+      }
+
+      const dots: Array<{ x: number; y: number; d: number; s: number; i: number }> = [];
       const totalH = H * TOTAL_PAGES;
       const vTop = scrollY - H * 0.3, vBot = scrollY + H * 1.3;
 
@@ -155,28 +319,12 @@ export default function DNABackground() {
 
         const pts = [
           {
-            get x() {
-              return x1;
-            },
-            get y() {
-              return y1;
-            },
-            set(v: { x: number; y: number }) {
-              x1 = v.x;
-              y1 = v.y;
-            },
+            get x() { return x1; }, get y() { return y1; },
+            set(v: { x: number; y: number }) { x1 = v.x; y1 = v.y; },
           },
           {
-            get x() {
-              return x2;
-            },
-            get y() {
-              return y2;
-            },
-            set(v: { x: number; y: number }) {
-              x2 = v.x;
-              y2 = v.y;
-            },
+            get x() { return x2; }, get y() { return y2; },
+            set(v: { x: number; y: number }) { x2 = v.x; y2 = v.y; },
           },
         ];
 
@@ -201,11 +349,11 @@ export default function DNABackground() {
             const ra = rAlpha * (0.3 + 0.7 * Math.sin(f * Math.PI));
             ctx!.beginPath();
             ctx!.arc(rx, ry, rr, 0, 6.28);
-            ctx!.fillStyle = rgba('#0A81FF', ra * 0.7);
+            ctx!.fillStyle = rgba(themeColors.primary, ra * 0.7);
             ctx!.fill();
             ctx!.beginPath();
             ctx!.arc(rx, ry, rr * 0.6, 0, 6.28);
-            ctx!.fillStyle = rgba('#59BAEE', ra * 0.9);
+            ctx!.fillStyle = rgba(themeColors.secondary, ra * 0.9);
             ctx!.fill();
           }
         }
@@ -213,9 +361,8 @@ export default function DNABackground() {
         if (Math.random() < 0.012) {
           const pick = Math.random() < 0.5;
           spawnFlow(
-            pick ? x1 : x2,
-            pick ? y1 : y2,
-            ['#0A81FF', '#59BAEE', '#8DE0F6'][Math.floor(Math.random() * 3)]
+            pick ? x1 : x2, pick ? y1 : y2,
+            [themeColors.primary, themeColors.secondary, themeColors.tertiary][Math.floor(Math.random() * 3)]
           );
         }
       }
@@ -226,7 +373,7 @@ export default function DNABackground() {
         const dn = (p.d + 1) / 2;
         const r = 1.2 + 4.5 * dn;
         const a = 0.1 + 0.9 * dn;
-        const col = p.s === 1 ? '#0A81FF' : '#59BAEE';
+        const col = p.s === 1 ? themeColors.primary : themeColors.secondary;
 
         ctx!.beginPath();
         ctx!.arc(p.x, p.y, r * 3.5, 0, 6.28);
@@ -242,17 +389,15 @@ export default function DNABackground() {
         ctx!.fill();
         ctx!.beginPath();
         ctx!.arc(p.x, p.y, r * 0.28, 0, 6.28);
-        ctx!.fillStyle = rgba('#8DE0F6', a * 0.8);
+        ctx!.fillStyle = rgba(themeColors.tertiary, a * 0.8);
         ctx!.fill();
       }
 
       flows = flows.filter((f) => {
         f.life++;
-        f.x += f.vx;
-        f.y += f.vy;
+        f.x += f.vx; f.y += f.vy;
         f.vy += 0.003;
-        f.vx *= 0.997;
-        f.vy *= 0.997;
+        f.vx *= 0.997; f.vy *= 0.997;
         const dx = f.x - mx, dy = f.y - my, dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < MR * 0.6 && dist > 1) {
           const force = (1 - dist / (MR * 0.6)) * 2.5;
@@ -286,23 +431,11 @@ export default function DNABackground() {
     }
 
     const handleResize = () => resize();
-    const handleScroll = () => {
-      scrollY = window.scrollY;
-    };
-    const handleMouseMove = (e: MouseEvent) => {
-      mx = e.clientX;
-      my = e.clientY;
-    };
-    const handleMouseLeave = () => {
-      mx = my = -9999;
-    };
-    const handleTouchMove = (e: TouchEvent) => {
-      mx = e.touches[0].clientX;
-      my = e.touches[0].clientY;
-    };
-    const handleTouchEnd = () => {
-      mx = my = -9999;
-    };
+    const handleScroll = () => { scrollY = window.scrollY; };
+    const handleMouseMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
+    const handleMouseLeave = () => { mx = my = -9999; };
+    const handleTouchMove = (e: TouchEvent) => { mx = e.touches[0].clientX; my = e.touches[0].clientY; };
+    const handleTouchEnd = () => { mx = my = -9999; };
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -310,6 +443,7 @@ export default function DNABackground() {
     window.addEventListener('mouseleave', handleMouseLeave);
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('themeChange', handleThemeChange);
 
     resize();
     animId = requestAnimationFrame(frame);
@@ -323,6 +457,7 @@ export default function DNABackground() {
       window.removeEventListener('mouseleave', handleMouseLeave);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('themeChange', handleThemeChange);
     };
   }, []);
 
