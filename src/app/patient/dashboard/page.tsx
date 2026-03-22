@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DNABackground from '@/components/DNABackground';
 import { getUserProfile, handleLogout } from '@/app/auth/actions';
+import { getPatientCases, getCaseResponses, closeCase } from '@/app/patient/actions';
 
 // Mock user data - will be replaced with Supabase data
 const MOCK_USER = { name: 'Sarah Mitchell', initials: 'SM', email: 'sarah.mitchell@email.com', age: 34, activeCases: 2, completedCases: 5, savedRecords: 12 };
 
-const CASES = [
+const MOCK_CASES = [
   { id: 1, title: 'Skin lesion on left forearm', date: 'Mar 14, 2026', opinions: 3, status: 'active' as const, label: 'In Review' },
   { id: 2, title: 'Persistent lower back pain — MRI follow-up', date: 'Mar 8, 2026', opinions: 1, status: 'active' as const, label: 'Awaiting Opinions' },
   { id: 3, title: 'Chest X-ray interpretation', date: 'Feb 22, 2026', opinions: 4, status: 'completed' as const, label: 'Resolved' },
@@ -53,6 +54,15 @@ export default function PatientDashboard() {
   const [authed, setAuthed] = useState(false);
   const [user, setUser] = useState(MOCK_USER);
   const [loading, setLoading] = useState(true);
+  const [cases, setCases] = useState<any[]>([]);
+  const [casesLoading, setCasesLoading] = useState(false);
+  const [casesError, setCasesError] = useState<string | null>(null);
+  const [selectedCase, setSelectedCase] = useState<any | null>(null);
+  const [responses, setResponses] = useState<any[]>([]);
+  const [responseLoading, setResponseLoading] = useState(false);
+  const [responseError, setResponseError] = useState<string | null>(null);
+  const [closeLoading, setCloseLoading] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -83,6 +93,46 @@ export default function PatientDashboard() {
         });
 
         setAuthed(true);
+        
+        // Fetch patient's cases after auth is confirmed
+        if (result.user?.id) {
+          setCasesLoading(true);
+          try {
+            const caseResult = await getPatientCases(result.user.id);
+            if (caseResult.success) {
+              // Map database cases to UI format
+              const formattedCases = caseResult.cases.map((c: any) => ({
+                id: c.id,
+                title: c.title,
+                date: new Date(c.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                opinions: c.responseCount || 0,
+                status: c.status === 'open' ? 'active' : 'completed',
+                label: c.status === 'open' ? 'Awaiting Opinions' : 'Resolved',
+                dbStatus: c.status,
+                description: c.description,
+                images: c.images || [],
+              }));
+              setCases(formattedCases);
+              setCasesError(null);
+              
+              // Update user stats from actual cases
+              setUser(prev => ({
+                ...prev,
+                activeCases: formattedCases.filter(c => c.status === 'active').length,
+                completedCases: formattedCases.filter(c => c.status === 'completed' || c.status === 'closed').length,
+              }));
+            } else {
+              setCasesError(caseResult.error || 'Could not load cases');
+              setCases([]);
+            }
+          } catch (err) {
+            console.error('Failed to fetch cases:', err);
+            setCasesError('Could not load cases');
+            setCases([]);
+          } finally {
+            setCasesLoading(false);
+          }
+        }
       } catch (err) {
         console.error('Auth check error:', err);
         router.push('/auth/sign-in');
@@ -114,9 +164,61 @@ export default function PatientDashboard() {
     }
   }
 
+  async function handleCaseClick(caseRecord: any) {
+    // Allow clicking any case to view details
+    setSelectedCase(caseRecord);
+    setResponseLoading(true);
+    setResponseError(null);
+    setResponses([]);
+    
+    try {
+      const result = await getCaseResponses(caseRecord.id);
+      if (result.success) {
+        setResponses(result.responses);
+      } else {
+        setResponseError(result.error || 'Could not load responses');
+        setResponses([]);
+      }
+    } catch (err) {
+      console.error('Error fetching responses:', err);
+      setResponseError('An error occurred while loading responses');
+      setResponses([]);
+    } finally {
+      setResponseLoading(false);
+    }
+  }
+
+  async function handleCloseCase(caseId: string) {
+    setCloseLoading(true);
+    setCloseError(null);
+    try {
+      const result = await closeCase(caseId);
+      if (result.success) {
+        // Update local state - remove from cases list and refresh
+        setCases(cases.filter(c => c.id !== caseId));
+        handleCloseResponseModal();
+      } else {
+        setCloseError(result.error || 'Failed to close case');
+        setCloseLoading(false);
+      }
+    } catch (err) {
+      console.error('Error closing case:', err);
+      setCloseError('An error occurred while closing case');
+      setCloseLoading(false);
+    }
+  }
+
+  function handleCloseResponseModal() {
+    // Clear all modal state when closing
+    setSelectedCase(null);
+    setResponses([]);
+    setResponseLoading(false);
+    setResponseError(null);
+  }
+
   if (!authed || loading) return null;
 
-  const filteredCases = CASES.filter(c => c.status === caseTab);
+  const filteredCases = cases.filter(c => c.status === caseTab);
 
   return (
     <div className="relative min-h-screen bg-transparent">
@@ -161,14 +263,11 @@ export default function PatientDashboard() {
             <p className="text-xs text-slate-400 mt-1">{user.activeCases} active cases · {user.savedRecords} saved records</p>
           </div>
           <div className="flex gap-2.5 flex-wrap justify-center mt-1">
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0A81FF] to-[#3A9BFF] text-white text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+            <button onClick={() => router.push('/patient/cases/new')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0A81FF] to-[#3A9BFF] text-white text-sm font-semibold shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all">
               {Icon.plus} Open New Case
             </button>
             <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-sm font-semibold shadow-sm hover:bg-white hover:-translate-y-0.5 transition-all">
               {Icon.upload} Upload Records
-            </button>
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-sm font-semibold shadow-sm hover:bg-white hover:-translate-y-0.5 transition-all">
-              {Icon.shield} Digital Twin
             </button>
           </div>
         </section>
@@ -213,16 +312,22 @@ export default function PatientDashboard() {
             </div>
           </div>
           <div className="space-y-2.5">
-            {filteredCases.length === 0 && (
+            {casesLoading && (
+              <div className="bg-white/80 backdrop-blur-lg border border-slate-200/70 rounded-2xl p-8 text-center text-sm text-slate-400">Loading cases...</div>
+            )}
+            {casesError && (
+              <div className="bg-white/80 backdrop-blur-lg border border-red-200/70 rounded-2xl p-8 text-center text-sm text-red-500">{casesError}</div>
+            )}
+            {!casesLoading && !casesError && filteredCases.length === 0 && (
               <div className="bg-white/80 backdrop-blur-lg border border-slate-200/70 rounded-2xl p-8 text-center text-sm text-slate-400">No {caseTab} cases</div>
             )}
             {filteredCases.map(c => (
-              <div key={c.id} className="group bg-white/80 backdrop-blur-lg border border-slate-200/70 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md hover:border-[#0A81FF]/20 transition-all cursor-pointer">
+              <div key={c.id} onClick={() => handleCaseClick(c)} className={`group bg-white/80 backdrop-blur-lg border border-slate-200/70 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md hover:border-[#0A81FF]/20 transition-all cursor-pointer`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-semibold text-slate-900 truncate">{c.title}</span>
-                      <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${c.status === 'active' ? 'bg-blue-50 text-[#0A81FF]' : 'bg-emerald-50 text-emerald-600'}`}>
+                      <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${c.status === 'active' ? 'bg-blue-50 text-[#0A81FF]' : (c.status === 'closed' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-600')}`}>
                         {c.status === 'active' ? Icon.clock : Icon.check} {c.label}
                       </span>
                     </div>
@@ -231,7 +336,7 @@ export default function PatientDashboard() {
                       <span className="flex items-center gap-1">{Icon.user} {c.opinions} opinion{c.opinions !== 1 && 's'}</span>
                     </div>
                   </div>
-                  <div className="text-slate-300 group-hover:text-[#0A81FF] transition-colors ml-3">{Icon.chevron}</div>
+                  <div className="transition-colors ml-3 text-slate-300 group-hover:text-[#0A81FF]">{Icon.chevron}</div>
                 </div>
               </div>
             ))}
@@ -269,7 +374,7 @@ export default function PatientDashboard() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Medical Records</h2>
-              <p className="text-[0.7rem] text-slate-400 mt-0.5">Your Digital Health Twin — all records in one place</p>
+              <p className="text-[0.7rem] text-slate-400 mt-0.5">Organize and manage all your health records</p>
             </div>
             <button className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/80 backdrop-blur border border-slate-200/80 text-slate-700 text-xs font-semibold shadow-sm hover:bg-white transition-all">
               {Icon.upload} Upload
@@ -296,6 +401,119 @@ export default function PatientDashboard() {
 
         <div className="h-12" />
       </main>
+
+      {/* RESPONSES MODAL */}
+      {selectedCase && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-200/70 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Medical Assessment</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{selectedCase.title}</p>
+              </div>
+              <button onClick={handleCloseResponseModal} className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Close">✕</button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-5">
+              {/* Case Details Info */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Date Submitted</p>
+                  <p className="text-sm text-slate-700">{selectedCase.date}</p>
+                </div>
+
+                {selectedCase.description && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Case Description</p>
+                    <div className="bg-slate-50/80 border border-slate-200/70 rounded-xl p-4 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                      {selectedCase.description}
+                    </div>
+                  </div>
+                )}
+
+                {selectedCase.images && selectedCase.images.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Medical Images ({selectedCase.images.length})</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {selectedCase.images.map((url: string, idx: number) => (
+                        <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200/70">
+                          <img src={url} alt={`Case image ${idx + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Responses Section */}
+              <div className="border-t border-slate-200/70 pt-5">
+                <h4 className="text-sm font-bold text-slate-900 mb-4">Professional Assessments</h4>
+                
+                {responseLoading && (
+                  <div className="text-center py-4 text-sm text-slate-400">Loading assessments...</div>
+                )}
+
+                {responseError && (
+                  <div className="bg-red-50/80 border border-red-200/70 rounded-xl p-3 text-sm text-red-700">
+                    {responseError}
+                  </div>
+                )}
+
+                {!responseLoading && !responseError && responses.length === 0 && (
+                  <div className="text-center py-4 text-sm text-slate-400">No assessments yet. Check back soon.</div>
+                )}
+
+                {responses.map((response, idx) => (
+                  <div key={response.id} className="bg-gradient-to-r from-emerald-50/80 to-slate-50/80 border border-emerald-200/70 rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wide">Assessment #{idx + 1}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {response.created_at ? new Date(response.created_at).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A'}
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-600">
+                        {Icon.check} Completed
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+                      {response.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Close Error */}
+              {closeError && (
+                <div className="bg-red-50/80 border border-red-200/70 rounded-xl p-3 text-sm text-red-700">
+                  {closeError}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-3 border-t border-slate-200/70">
+                <button
+                  onClick={handleCloseResponseModal}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100/80 text-slate-700 font-medium text-sm hover:bg-slate-200/80 transition-all"
+                >
+                  Close
+                </button>
+                {selectedCase.status === 'active' && (
+                  <button
+                    onClick={() => handleCloseCase(selectedCase.id)}
+                    disabled={closeLoading}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium text-sm hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50"
+                  >
+                    {closeLoading ? 'Closing...' : 'Close Case'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
